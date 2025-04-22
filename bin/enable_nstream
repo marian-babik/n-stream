@@ -1,0 +1,20 @@
+#!/bin/sh
+# This is a sample shell script showing how you can submit the START_OBSESSING_OVER_SVC_CHECKS command
+# to Nagios.  Adjust variables to fit your environment as necessary.
+
+now=`date +%s`
+
+cmdpipe=
+if [ -p /var/nagios/rw/nagios.cmd ]; then
+   cmdpipe='/var/nagios/rw/nagios.cmd'
+fi
+if [ -p /omd/sites/etf/tmp/run/nagios.cmd ]; then
+   cmdpipe='/omd/sites/etf/tmp/run/nagios.cmd'
+fi
+
+if [ ! -p $cmdpipe ]; then
+   printf "Unable to find Nagios command pipe"
+   exit 1
+fi
+
+/usr/bin/printf "[%lu] START_OBSESSING_OVER_SVC_CHECKS\n" $now > $cmdpipe

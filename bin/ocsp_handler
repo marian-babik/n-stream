@@ -1,0 +1,5 @@
+#!/bin/env python
+
+import nstream.ocsp_handler
+
+nstream.ocsp_handler.main()

@@ -1,0 +1,5 @@
+#!/usr/bin/python3
+
+import nstream.es_handler
+
+nstream.es_handler.main()

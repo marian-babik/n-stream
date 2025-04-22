@@ -1,0 +1,52 @@
+#!/bin/sh
+
+#The script to create example configurations for stompclt instances 
+
+DIR = "/etc/msgconfs"
+
+if [-d $DIR ]; then
+    echo "directory $DIR exists"
+else
+    echo "creating $DIR directory"
+    mkdir -p $DIR
+fi
+
+cat > /etc/msgconfs/stompsend.conf <<EOT
+# define the source message queue
+<incoming-queue>
+    path = /var/spool/msg-nagios-bridge/outgoing
+</incoming-queue>
+# modify the message header on the fly
+callback-code = <<EOF
+    $hdr{destination} = "/queue/sam.lhcb.metric";
+    $hdr{persistent} = "true";
+EOF
+# define the destination broker
+<outgoing-broker>
+    uri = "stomp://oldsam.msg.cern.ch:6163/"
+</outgoing-broker>
+# miscellaneous options
+reliable = true
+loop = true
+remove = true
+daemon = true
+EOT
+echo "/etc/msgconfs/stompsend.conf created"
+
+cat > /etc/msgconfs/stomprecieve.conf <<EOT
+#define the source broker
+<incoming-broker>
+    uri = "stomp://oldsam.msg.cern.ch:6163/"
+</incoming-broker>
+# define the subscriptions
+<subscribe>
+    destination = /queue/grid.probe.metricOutput.EGEE.sam-lhcb-dev_cern_ch
+</subscribe>
+# define the destination message queue
+<outgoing-queue>
+    path = /var/spool/msg-nagios-bridge/incoming
+</outgoing-queue>
+# miscellaneous options
+daemon = true
+EOT
+echo "/etc/msgconfs/stomprecieve.conf created"

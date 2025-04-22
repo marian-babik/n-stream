@@ -1,0 +1,7 @@
+#!/bin/bash
+
+export PYTHONPATH=/etc/nagios-mq/:$PYTHONPATH
+
+time /usr/bin/python -m cProfile -o /tmp/profile ocsp_handler.py
+
+/usr/bin/python -c "import pstats; p = pstats.Stats('/tmp/profile'); p.sort_stats('cumulative').print_stats(); p.sort_stats('time').print_stats(10)"

@@ -1,0 +1,5 @@
+#!/bin/env python
+
+import nstream.mq_handler
+
+nstream.mq_handler.main()

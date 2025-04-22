@@ -1,0 +1,142 @@
+#!/bin/sh
+
+#The example script that intializes simplevisor as a service under nagios user
+#Two instances of stompclt are initialized within
+#Use it as a normal service:
+#/sbin/service svisorservice start|stop|status|restart|check
+
+NAME=${1:-"svisorservice"}
+BASE="/var/lib/"
+SHOME=${BASE}${NAME}
+
+if [ -d ${SHOME} ]; then
+    echo "directory ${SHOME} already exists"
+    exit 1
+fi
+
+echo "creating ${SHOME} structure"
+mkdir -p ${SHOME}/bin ${SHOME}/data ${SHOME}/etc
+
+echo -n "changing directory to: "
+pushd ${SHOME}
+cat > bin/service <<EOT
+#!/bin/sh
+#
+# init script that can be symlinked from /etc/init.d
+#
+
+# chkconfig: - 90 15
+# description: ${NAME} - simplevisor instance
+### BEGIN INIT INFO
+# Provides:          ${NAME}
+# Required-Start:    \$remote_fs \$syslog
+# Required-Stop:     \$remote_fs \$syslog
+# Default-Start:     3 4 5
+# Default-Stop:      0 1 2 6
+# Description:       Simple daemons supervisor: ${NAME}
+# Short-Description: Simple daemons supervisor: ${NAME}
+### END INIT INFO
+
+. "${SHOME}/etc/simplevisor.profile"
+exec "/usr/bin/simplevisor-control" \${1+"\$@"}
+EOT
+chmod +x bin/service
+echo "$SHOME/bin/service created"
+
+cat > etc/simplevisor.profile <<EOT
+# main
+export SIMPLEVISOR_NAME=${NAME}
+# if you want to run it as another user:
+export SIMPLEVISOR_USER=nagios
+export SIMPLEVISOR_CONF=/etc/msgconfs/simplevisor.conf
+export SIMPLEVISOR_PIDFILE=/var/run/msgpids/simplevisor.pid
+export SIMPLEVISOR_LOCKFILE=/var/run/msgpids/simplevisor.lock
+EOT
+echo "$SHOME/etc/simplevisor.profile created"
+
+echo "creating config directory"
+mkdir -p /etc/msgconfs
+
+cat > /etc/msgconfs/simplevisor.conf <<EOT
+<simplevisor>
+    store = $/var/cache/simplevisor/simplevisor.json
+    # log = (stdout|syslog|file)
+    log = file
+    logfile = $/var/log/simplevisor/simplevisor.log
+    # (debug|info|warning|error|critical)
+    loglevel = info
+</simplevisor>
+
+<entry>
+  type = supervisor
+  name = msgnagsv
+  expected = running
+  strategy = one_for_one  strategy = one_for_one
+  <children>
+     <<include services.conf>>
+  </children>
+</entry>
+
+EOT
+echo "/etc/msgconfs/simplevisor.conf created"
+
+cat > /etc/msgconfs/services.conf <<EOT
+<entry>
+  var_pidfile = /var/run/msgpids/sender.pid
+  var_confdir = /etc/msgconfs
+  var_program = /usr/bin/stompclt --pidfile ${var_pidfile}
+  type     = service
+  name     = sender
+  expected = running
+  start    = ${var_program} --conf ${var_confdir}/stompsend.conf
+  stop     = ${var_program} --quit
+  status   = ${var_program} --status
+  timeout  = 60
+</entry>
+
+<entry>
+  var_pidfile = /var/run/msgpids/reciever.pid
+  var_confdir = /etc/msgconfs
+  var_program = /usr/bin/stompclt --pidfile ${var_pidfile}
+  type     = service
+  name     = reciever
+  expected = running
+  start    = ${var_program} --conf ${var_confdir}/stomprecieve.conf
+  stop     = ${var_program} --quit
+  status   = ${var_program} --status
+  timeout  = 60
+</entry>
+EOT
+echo "/etc/msgconfs/services.conf created"
+
+echo -n "changing directory to: "
+popd
+
+ln -s ${SHOME}/bin/service /etc/init.d/${NAME}
+chkconfig --add ${NAME}
+echo "/etc/init.d/${NAME} created"
+
+sh ./stompclt.conf.example
+echo "stompclt configured with examples"
+
+/sbin/service ${NAME} start
+echo "${NAME} has been started"
+
+echo "
+*******************************
+
+All the supervisor's file live in ${SHOME}
+
+customize the supervisor:
+/etc/msgconfs/simplevisor.conf
+
+declare your services:
+/etc/msgconfs/services.conf
+
+and start the supervisor:
+$ /sbin/service ${NAME} start
+
+for more commands:
+$ /sbin/service ${NAME}
+"
+
