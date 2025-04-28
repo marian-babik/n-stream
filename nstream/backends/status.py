@@ -11,7 +11,7 @@ def insert(events):
         data = dict()
 
         metrics = ['perfSONAR services: ntp', 'perfSONAR esmond freshness',
-                   'perfSONAR services: pscheduler stats']
+                   'perfSONAR services: pscheduler']
         found = False
         for met in metrics:
             if met not in m['metric']:
